@@ -14,13 +14,13 @@ import { parseExpression } from '../../utils/ExpressionUtils';
  * LICENSE file in the root directory of this source tree.
  */
 
-const Plot = React.lazy(() => import('./PlotlyChart'));
+const Plot = React.lazy(() => import("./PlotlyChart"));
 
 export const COLOR_DEFAULTS = {
     base: 190,
     range: 0,
     s: 0.95,
-    v: 0.63
+    v: 0.63,
 };
 
 export const defaultColorGenerator = (total, colorOptions) => {
@@ -202,16 +202,47 @@ export const getGroupedTraceValues = (classValues, filteredClassValues, ungroupe
     return groupedValues;
 };
 
-const preProcessValues = (formula, values) => (
-    values.map(v => {
+const preProcessValues = (formula, values) =>
+    values.map((v) => {
         const value = v;
         try {
-            return parseExpression(formula, {value});
+            return parseExpression(formula, { value });
         } catch {
             // if error (e.g. null values), return the value itself
             return v;
         }
-    }));
+    });
+
+const getSum = ( data, yVal ) => {
+    return data.map( d => d[yVal] ).reduce( ( a,b ) => {
+        return a+b;
+    });
+}
+
+const getIds = ( combinations, xVal, yVal ) => {
+    let ids = [xVal, combinations[0][xVal], combinations[0][xVal] + " - " + combinations[0][yVal]];
+    for ( let i=1; i<combinations.length; i++ ) {
+        if ( combinations[i][xVal] === combinations[i-1][xVal] ) {
+            ids.push( combinations[i][xVal] + " - " + combinations[i][yVal] )
+        } else {
+            ids.push( combinations[i][xVal] );
+            ids.push( combinations[i][xVal] + " - " + combinations[i][yVal] );
+        }  
+    }
+    return ids;
+}
+    
+const sortData = ( data, xVal ) => {
+    return data.sort(function (a, b) {
+        if (a[xVal] < b[xVal]) {
+            return -1;
+        }
+        if (a[xVal] > b[xVal]) {
+            return 1;
+        }
+        return 0;
+        });
+}
 
 const reorderDataByClassification = (data, {classificationAttr, classificationType, autoColorOptions, customColorEnabled}) => {
     const classifications = data.map(d => d[classificationAttr]);
@@ -220,35 +251,49 @@ const reorderDataByClassification = (data, {classificationAttr, classificationTy
         const tempData = data.map(el => ({...el}));
         let groupedData = [];
         switch (classificationType) {
-        case 'value':
-            groupedData = Object.keys(colorCategories).reduce((prev, cur) => {
-                const entries = [];
-                tempData.forEach((el, idx) => {
-                    if (el[classificationAttr] === colorCategories[cur].value) {
-                        entries.push(el);
-                        delete tempData[idx];
-                    }
-                });
-                return [...prev, entries];
-            }, []);
-            break;
-        case "range":
-            // Ranges are open at the end
-            // e.g. 0-10 will include 0-9 values
-            // if two ranges are crossing - first range in the list will contain data value
-            groupedData = Object.keys(colorCategories).reduce((prev, cur) => {
-                const entries = [];
-                tempData.forEach((el, idx) => {
-                    if (el[classificationAttr] >= colorCategories[cur].min && el[classificationAttr] < colorCategories[cur].max) {
-                        entries.push(el);
-                        delete tempData[idx];
-                    }
-                });
-                return [...prev, entries];
-            }, []);
-            break;
-        default:
-            return data;
+            case "value":
+                groupedData = Object.keys(colorCategories).reduce(
+                    (prev, cur) => {
+                        const entries = [];
+                        tempData.forEach((el, idx) => {
+                            if (
+                                el[classificationAttr] ===
+                                colorCategories[cur].value
+                            ) {
+                                entries.push(el);
+                                delete tempData[idx];
+                            }
+                        });
+                        return [...prev, entries];
+                    },
+                    []
+                );
+                break;
+            case "range":
+                // Ranges are open at the end
+                // e.g. 0-10 will include 0-9 values
+                // if two ranges are crossing - first range in the list will contain data value
+                groupedData = Object.keys(colorCategories).reduce(
+                    (prev, cur) => {
+                        const entries = [];
+                        tempData.forEach((el, idx) => {
+                            if (
+                                el[classificationAttr] >=
+                                    colorCategories[cur].min &&
+                                el[classificationAttr] <
+                                    colorCategories[cur].max
+                            ) {
+                                entries.push(el);
+                                delete tempData[idx];
+                            }
+                        });
+                        return [...prev, entries];
+                    },
+                    []
+                );
+                break;
+            default:
+                return data;
         }
         return flatten(groupedData.concat(flatten(tempData).filter(Boolean)));
     }
@@ -266,7 +311,8 @@ function getData({
     yAxisLabel,
     autoColorOptions,
     customColorEnabled,
-    classificationType
+    classificationType,
+    options
 }) {
     let classifications;
     let classificationColors;
@@ -282,6 +328,8 @@ function getData({
         autoColorOptions,
         customColorEnabled
     });
+
+    data = orderBy(data, [xDataKey], ["asc"]);
 
     classifications = classificationAttr ? data.map(d => d[classificationAttr]) : [];
     const x = data.map(d => d[xDataKey]);
@@ -326,7 +374,6 @@ function getData({
             labels: x,
             ...(customColorEnabled ? { marker: {colors: x.reduce((acc) => ([...acc, autoColorOptions?.defaultCustomColor || '#0888A1']), [])} } : {})
         };
-
     case 'bar':
         if (formula) {
             y = preProcessValues(formula, y);
@@ -371,19 +418,148 @@ function getData({
         };
         return barChartTrace;
 
+    case 'sunburst':
+        let sunburstData = sortData( data, xDataKey );
+        const zDataKey = options && options.groupByAttributes2;
+        let parents = ["", xDataKey, sunburstData[0][xDataKey]];
+        let children = [xDataKey, sunburstData[0][xDataKey], sunburstData[0][zDataKey]];
+        let ids = getIds( sunburstData, xDataKey, zDataKey );
+
+        for ( let i=1; i<sunburstData.length; i++ ) {
+            if ( sunburstData[i][xDataKey] === sunburstData[i-1][xDataKey] ) {
+                parents.push( sunburstData[i][xDataKey] )
+                children.push( sunburstData[i][zDataKey] )
+            } else {
+                parents.push( xDataKey );
+                parents.push( sunburstData[i][xDataKey] );
+                children.push( sunburstData[i][xDataKey] );
+                children.push( sunburstData[i][zDataKey] );
+            }
+        }
+
+        let values = [getSum( sunburstData, yDataKey )];
+        let sumValOfXdata = sunburstData[0][yDataKey];
+        let listOfValuesOfSameXdata = [];
+
+        for ( let i=0; i<sunburstData.length; i++ ) {
+            if ( i !== 0 ) {
+                if ( sunburstData[i][xDataKey] === sunburstData[i-1][xDataKey] ) {
+                    listOfValuesOfSameXdata.push( sunburstData[i][yDataKey] )
+                    sumValOfXdata += sunburstData[i][yDataKey];
+                } else {
+                    values.push( sumValOfXdata )
+                    values = values.concat( listOfValuesOfSameXdata );
+                    listOfValuesOfSameXdata = [];
+                    listOfValuesOfSameXdata.push( sunburstData[i][yDataKey] );
+                    sumValOfXdata = sunburstData[i][yDataKey];                
+                }
+                if ( i === sunburstData.length-1 ) {
+                    values.push( sumValOfXdata )
+                    values = values.concat( listOfValuesOfSameXdata );
+                }
+            } else {
+                listOfValuesOfSameXdata.push( sunburstData[i][yDataKey] );
+            }
+        }
+
+        let sunburstChartTrace = {
+            type,        
+            labels: children,
+            parents: parents,
+            ids: ids,
+            values:values,
+            outsidetextfont: {size: 40, color: "#377eb8"}, 
+            leaf: {opacity: 1.0},
+            marker: {line: {width: 2}},
+            branchvalues: 'total',
+          };
+
+        return {
+            ...sunburstChartTrace,
+        };
+    
+    case "line":
+        if (formula) {
+            y = preProcessValues(formula, y);
+        }
+        // common line chart properties
+        let lineChartTrace = { type };
+
+        /** Line chart is classified colored*/
+        if (
+            classificationType !== "default" &&
+            classificationColors.length
+        ) {
+            const legendLabels =
+                classificationType === "value"
+                    ? classifications.map((item) =>
+                            getLegendLabel(
+                                item,
+                                colorCategories,
+                                defaultClassLabel,
+                                type
+                            )
+                        )
+                    : classifications.map((item) =>
+                            getRangeClassLabel(
+                                item,
+                                colorCategories,
+                                defaultClassLabel,
+                                yAxisLabel || yDataKey,
+                                classificationAttr
+                            )
+                        );
+            const filteredLegendLabels = union(legendLabels);
+            const customLabels = filteredLegendLabels.reduce((acc, cur) => {
+                return [
+                    ...acc,
+                    ...[
+                        cur
+                            ? cur.replace(
+                                    "${legendValue}",
+                                    yAxisLabel || yDataKey || ""
+                                )
+                            : yAxisLabel || yDataKey,
+                    ],
+                ];
+            }, []);
+            const [groupedColors, groupedXValues, groupedYValues] =
+                getGroupedTraceValues(legendLabels, filteredLegendLabels, [
+                    classificationColors,
+                    x,
+                    y,
+                ]);
+            const lineChartTraces = customLabels.map((item, index) => {
+                const trace = {
+                    ...lineChartTrace,
+                    x: groupedXValues[index],
+                    y: groupedYValues[index],
+                    name: item,
+                    marker: { color: groupedColors[index][0] },
+                    hovertemplate: `${yAxisOpts?.tickPrefix ?? ""}%{y:${
+                        yAxisOpts?.format ?? "g"
+                    }}${yAxisOpts?.tickSuffix ?? ""}<extra>${item}</extra>`,
+                };
+                return trace;
+            });
+            return lineChartTraces;
+        }
+    
     default:
         if (formula) {
             y = preProcessValues(formula, y);
         }
         return {
-            hovertemplate: `${yAxisOpts?.tickPrefix ?? ""}%{y:${yAxisOpts?.format ?? 'd'}}${yAxisOpts?.tickSuffix ?? ""}<extra></extra>`, // uses the format if passed, otherwise shows the full number.
+            hovertemplate: `${yAxisOpts?.tickPrefix ?? ""}%{y:${
+                yAxisOpts?.format ?? "d"
+            }}${yAxisOpts?.tickSuffix ?? ""}<extra></extra>`, // uses the format if passed, otherwise shows the full number.
             x,
             y,
-            name: yAxisLabel || yDataKey
+            name: yAxisLabel || yDataKey,
         };
     }
 }
-function getMargins({ type, isModeBarVisible}) {
+function getMargins({ type, isModeBarVisible }) {
     switch (type) {
     case 'pie':
         return {
@@ -393,6 +569,13 @@ function getMargins({ type, isModeBarVisible}) {
             r: 2,
             pad: 4
         };
+    case 'sunburst':
+        return {
+            l: 0, 
+            r: 0, 
+            b: 0, 
+            t: 0
+        }
     default:
         return {
             l: 5, // if yAxis is false, reduce left margin
@@ -440,7 +623,7 @@ function getLayoutOptions({ series = [], cartesian, type, yAxis, xAxisAngle, xAx
             barmode: barChartType,
             ...chartsLayoutOptions
         };
-    // line / bar
+        
     default:
         return chartsLayoutOptions;
     }
@@ -451,23 +634,28 @@ function getLayoutOptions({ series = [], cartesian, type, yAxis, xAxisAngle, xAx
  */
 export const toPlotly = (props) => {
     const {
-
         xAxis,
         series = [],
         yAxisLabel,
-        type = 'line',
+        type = "line",
         height,
         width,
         legend,
         classifications,
-        autoColorOptions = COLOR_DEFAULTS
+        autoColorOptions = COLOR_DEFAULTS,
     } = props;
     const xDataKey = xAxis?.dataKey;
     const isModeBarVisible = width > 350;
     const classificationAttr = classifications?.dataKey;
     const { classificationAttributeType } = props.options || {};
-    const customColorEnabled = autoColorOptions.name === 'global.colors.custom';
-    const classificationType = getChartClassificationType(classificationAttr, classificationAttributeType, autoColorOptions, customColorEnabled);
+    const customColorEnabled = autoColorOptions.name === "global.colors.custom";
+    const classificationType = getChartClassificationType(
+        classificationAttr,
+        classificationAttributeType,
+        autoColorOptions,
+        customColorEnabled
+    );
+
     return {
         layout: {
             showlegend: legend,
@@ -505,10 +693,10 @@ export const toPlotly = (props) => {
                 "select2d",
                 "hoverCompareCartesian",
                 "hoverClosestCartesian",
-                "hoverClosestPie"
+                "hoverClosestPie",
             ],
-            displaylogo: false
-        }
+            displaylogo: false,
+        },
     };
 };
 
@@ -538,11 +726,9 @@ export const toPlotly = (props) => {
  * @prop {object} [autoColorOptions] options to generate the colors of the chart.
  * @prop {object[]} series descriptor for every series. Contains the y axis (or value) `dataKey`
  */
-export default function WidgetChart({
-    onInitialized,
-    ...props
-}) {
+export default function WidgetChart({ onInitialized, ...props }) {
     const { data, layout, config } = toPlotly(props);
+
     return (
         <Suspense fallback={<LoadingView />}>
             <Plot

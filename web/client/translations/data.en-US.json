@@ -1919,6 +1919,11 @@
                     "description": "Create a line chart to add to the map",
                     "caption": "line"
                 },
+                "sunburst": {
+                    "title": "Sunburst",
+                    "description": "Create a sunburst chart to add to the map",
+                    "caption": "sunburst"
+                },
                 "gauge": {
                     "title": "Gauge Chart",
                     "description": "Create a gauge chart to add to the map",
@@ -1945,6 +1950,7 @@
                 "bar": "X Attribute",
                 "gauge": "Group By",
                 "counter": "Group By",
+                "sunburst": "Inner ring",
                 "default": "Group By"
             },
             "aggregationAttribute": {
@@ -1953,7 +1959,11 @@
                 "bar": "Y Attribute",
                 "gauge": "Use",
                 "counter": "Use",
+                "sunburst": "Use",
                 "default": "Use"
+            },
+            "idAttribute": {
+                "sunburst": "ID"
             },
             "aggregateFunction": {
                 "line": "Operation",
@@ -1961,6 +1971,7 @@
                 "bar": "Operation",
                 "gauge": "Operation",
                 "counter": "Operation",
+                "sunburst": "Operation",
                 "default": "Operation"
             },
             "colorRamp": {
@@ -1969,6 +1980,7 @@
                 "bar": "Color",
                 "gauge": "Color",
                 "counter": "Color",
+                "sunburst": "Color",
                 "default": "Color"
             },
             "uom": {
