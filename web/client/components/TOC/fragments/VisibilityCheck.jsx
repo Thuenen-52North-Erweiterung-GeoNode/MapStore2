@@ -32,13 +32,13 @@ class VisibilityCheck extends React.Component {
     };
 
     render() {
-        //console.log(this.props.isInExclusiveGroup)
         if (this.props.checkType === "glyph") {
             if ( this.props.isInExclusiveGroup ) {
                 const exclusiveLayerIconActive = "record"
-                const exclusiveLayerIconInactive = "off"
+                const exclusiveLayerIconInactive = "unchecked"
                 return (<LayersTool
                     tooltip={this.props.tooltip}
+                    //style={this.props.node.visibility ? {color:"green"} : {color:"red"}}
                     style={this.props.style}
                     className={"visibility-check" + (this.props.node.visibility ? " checked" : "")}
                     data-position={this.props.node.storeIndex}

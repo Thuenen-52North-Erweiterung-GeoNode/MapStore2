@@ -147,7 +147,7 @@ class DefaultLayer extends React.Component {
                 tooltip="toc.loadingerror"
                 className="toc-error" />)
             :
-            (<VisibilityCheck key="visibilitycheck"
+            (<VisibilityCheck key="visibilitycheck" 
                 tooltip={this.props.node.loadingError === 'Warning' ? 'toc.toggleLayerVisibilityWarning' : 'toc.toggleLayerVisibility'}
                 node={this.props.node}
                 isInExclusiveGroup = {layerIsInExclusiveGroup}
