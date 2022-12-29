@@ -2002,7 +2002,7 @@
         "default": "Operation"
       },
       "visByFieldID": {
-        "line": "gib FieldID oder auf Fresse"
+        "line": "gib FieldID"
       },
       "colorRamp": {
         "line": "Farbe",

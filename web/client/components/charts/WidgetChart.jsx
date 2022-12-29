@@ -6,18 +6,18 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-import React, { Suspense } from 'react';
-import { sameToneRangeColors } from '../../utils/ColorUtils';
-import { parseExpression } from '../../utils/ExpressionUtils';
-import LoadingView from '../misc/LoadingView';
-import { every, includes, isNumber, isString, union, orderBy } from 'lodash';
-const Plot = React.lazy(() => import('./PlotlyChart'));
+import React, { Suspense } from "react";
+import { sameToneRangeColors } from "../../utils/ColorUtils";
+import { parseExpression } from "../../utils/ExpressionUtils";
+import LoadingView from "../misc/LoadingView";
+import { every, includes, isNumber, isString, union, orderBy } from "lodash";
+const Plot = React.lazy(() => import("./PlotlyChart"));
 
 export const COLOR_DEFAULTS = {
     base: 190,
     range: 0,
     s: 0.95,
-    v: 0.63
+    v: 0.63,
 };
 
 export const defaultColorGenerator = (total, colorOptions) => {
@@ -36,10 +36,26 @@ export const defaultColorGenerator = (total, colorOptions) => {
  * @param {boolean} customColorEnabled if the user selected a custom default color
  * @returns {string} type of classification. One of `value`, `range` or `default`
  */
-const getChartClassificationType = (classificationAttr, classificationAttributeType, autoColorOptions, customColorEnabled) => {
-    if (every([classificationAttr, autoColorOptions?.classification || autoColorOptions?.rangeClassification, customColorEnabled], Boolean)) {
-        return classificationAttributeType === 'string' ? 'value' : 'range';
-    } return 'default';
+const getChartClassificationType = (
+    classificationAttr,
+    classificationAttributeType,
+    autoColorOptions,
+    customColorEnabled
+) => {
+    if (
+        every(
+            [
+                classificationAttr,
+                autoColorOptions?.classification ||
+                    autoColorOptions?.rangeClassification,
+                customColorEnabled,
+            ],
+            Boolean
+        )
+    ) {
+        return classificationAttributeType === "string" ? "value" : "range";
+    }
+    return "default";
 };
 
 /**
@@ -50,20 +66,28 @@ const getChartClassificationType = (classificationAttr, classificationAttributeT
  * @returns {string[]} Hex colors for every single value in the rangeClassifications array to be mapped to
  * a chart trace color by plotly ["#ff0000", "#00ff00"]
  */
-const getClassificationColors = (values, colorCategories, customColorEnabled, autoColorOptions) => (
-    values.map(item => {
+const getClassificationColors = (
+    values,
+    colorCategories,
+    customColorEnabled,
+    autoColorOptions
+) =>
+    values.map((item) => {
         if (isString(item) || isNumber(item)) {
-            const matchedColor = colorCategories.filter(colorCategory => colorCategory.value === item)[0];
+            const matchedColor = colorCategories.filter(
+                (colorCategory) => colorCategory.value === item
+            )[0];
             // color is exactly matched to a user defined class/color
-            return matchedColor ? matchedColor.color :
-                // color is not exactly matched and default is chosen (if default exists)
-                customColorEnabled && autoColorOptions.defaultCustomColor ? autoColorOptions.defaultCustomColor :
-                    // class default color may not be defined and fall back to default color
-                    defaultColorGenerator(1, COLOR_DEFAULTS)[0];
+            return matchedColor
+                ? matchedColor.color
+                : // color is not exactly matched and default is chosen (if default exists)
+                customColorEnabled && autoColorOptions.defaultCustomColor
+                ? autoColorOptions.defaultCustomColor
+                : // class default color may not be defined and fall back to default color
+                  defaultColorGenerator(1, COLOR_DEFAULTS)[0];
         }
-        return  defaultColorGenerator(1, autoColorOptions)[0];
-    })
-);
+        return defaultColorGenerator(1, autoColorOptions)[0];
+    });
 
 /**
  * @param {number[]} values the values of the chart to be color-coded [123.56, 24.76, ...]
@@ -73,19 +97,26 @@ const getClassificationColors = (values, colorCategories, customColorEnabled, au
  * @returns {string[]} Hex colors for every single value in the rangeClassifications array to be mapped to
  * a chart trace color by plotly ["#ff0000", "#00ff00"]
  */
-const getRangeClassificationColors = (values, colorCategories, customColorEnabled, autoColorOptions) => {
-    return values.map(item => {
+const getRangeClassificationColors = (
+    values,
+    colorCategories,
+    customColorEnabled,
+    autoColorOptions
+) => {
+    return values.map((item) => {
         // if for some reason (error) item is not a number fall back to default color
         if (!isNumber(item)) {
             return defaultColorGenerator(1, COLOR_DEFAULTS)[0];
         }
         // try to get value in defined ranges
-        const matchedColor = colorCategories.filter(colorCategory => {
+        const matchedColor = colorCategories.filter((colorCategory) => {
             return item >= colorCategory.min && item < colorCategory.max;
         })[0];
-        return matchedColor ? matchedColor.color :
-            customColorEnabled && autoColorOptions.defaultCustomColor ? autoColorOptions.defaultCustomColor :
-                defaultColorGenerator(1, COLOR_DEFAULTS)[0];
+        return matchedColor
+            ? matchedColor.color
+            : customColorEnabled && autoColorOptions.defaultCustomColor
+            ? autoColorOptions.defaultCustomColor
+            : defaultColorGenerator(1, COLOR_DEFAULTS)[0];
     });
 };
 
@@ -97,20 +128,41 @@ const getRangeClassificationColors = (values, colorCategories, customColorEnable
  * @param {boolean} customColorEnabled if the user selected a custom default color
  * @return {object[]} an object with attributes `colorCategories` (color classes used) and `classificationColors` (array of colors to use for each value), depending on the classification type.
  */
-const getClassification = (classificationType, values, autoColorOptions, customColorEnabled) => {
+const getClassification = (
+    classificationType,
+    values,
+    autoColorOptions,
+    customColorEnabled
+) => {
     // if chart is absolute-values/category classified
-    const colorCategories = classificationType === 'value' ? autoColorOptions?.classification || [] :
-    // if chart is range classified
-        classificationType === 'range' ? autoColorOptions?.rangeClassification || [] :
-        // chart may not be classified or error
-            [];
+    const colorCategories =
+        classificationType === "value"
+            ? autoColorOptions?.classification || []
+            : // if chart is range classified
+            classificationType === "range"
+            ? autoColorOptions?.rangeClassification || []
+            : // chart may not be classified or error
+              [];
 
     // if chart is absolute-values/category classified
-    const classificationColors = classificationType === 'value' && colorCategories.length ? getClassificationColors(values, colorCategories, customColorEnabled, autoColorOptions) || [] :
-        // if chart is range classified
-        classificationType === 'range'  && colorCategories.length ? getRangeClassificationColors(values, colorCategories, customColorEnabled, autoColorOptions) || [] :
-        // chart may not be classified or error
-            [];
+    const classificationColors =
+        classificationType === "value" && colorCategories.length
+            ? getClassificationColors(
+                  values,
+                  colorCategories,
+                  customColorEnabled,
+                  autoColorOptions
+              ) || []
+            : // if chart is range classified
+            classificationType === "range" && colorCategories.length
+            ? getRangeClassificationColors(
+                  values,
+                  colorCategories,
+                  customColorEnabled,
+                  autoColorOptions
+              ) || []
+            : // chart may not be classified or error
+              [];
 
     return { colorCategories, classificationColors };
 };
@@ -126,12 +178,22 @@ const getClassification = (classificationType, values, autoColorOptions, customC
  */
 const getLegendLabel = (value, colorCategories, defaultClassLabel, type) => {
     let displayValue = defaultClassLabel;
-    if (includes(colorCategories.map(colorCat => colorCat.value), value)) {
-        displayValue = colorCategories.filter(item => item.value === value)[0].title;
+    if (
+        includes(
+            colorCategories.map((colorCat) => colorCat.value),
+            value
+        )
+    ) {
+        displayValue = colorCategories.filter((item) => item.value === value)[0]
+            .title;
         // if charts are pie replace with groupBy attribute
         // if charts are bar replace with the class value
         // line currently do not support custom labels
-        displayValue = displayValue ? displayValue : type === 'pie' ? '' : value;
+        displayValue = displayValue
+            ? displayValue
+            : type === "pie"
+            ? ""
+            : value;
     }
     return displayValue.trim();
 };
@@ -148,8 +210,14 @@ const getLegendLabel = (value, colorCategories, defaultClassLabel, type) => {
  * range but no label exists for such classification
  * @returns {string} the assigned label to the classified value, or empty string
  */
-const getRangeClassLabel = (value, colorCategories, defaultClassLabel, xValue, rangeClassAttribute) => {
-    const rangeClassItem = colorCategories.filter(colorCategory => {
+const getRangeClassLabel = (
+    value,
+    colorCategories,
+    defaultClassLabel,
+    xValue,
+    rangeClassAttribute
+) => {
+    const rangeClassItem = colorCategories.filter((colorCategory) => {
         return value >= colorCategory.min && value < colorCategory.max;
     })[0];
     // if the value falls within a defined range but there is no label fall back to min/max rangeAtrrbute
@@ -162,10 +230,13 @@ const getRangeClassLabel = (value, colorCategories, defaultClassLabel, xValue, r
     }
     // if we get here then a label should be defined if not fall back to default
     let displayValue = rangeClassItem?.title || defaultClassLabel;
-    return displayValue ? displayValue.trim()
-        .replace('${minValue}', rangeClassItem.min ?? '')
-        .replace('${maxValue}', rangeClassItem.max ?? '')
-        .replace('${legendValue}', rangeClassAttribute || '') : '';
+    return displayValue
+        ? displayValue
+              .trim()
+              .replace("${minValue}", rangeClassItem.min ?? "")
+              .replace("${maxValue}", rangeClassItem.max ?? "")
+              .replace("${legendValue}", rangeClassAttribute || "")
+        : "";
 };
 
 /**
@@ -185,30 +256,44 @@ const getRangeClassLabel = (value, colorCategories, defaultClassLabel, xValue, r
  * ungroupedValues = [[1, 2, 3, 4, 5, 6, 7, 8],['Foo','Foo','Bar','Bar','Baz','Foo','Baz','Baz']]
  * result = [ [[1,5],['Foo', 'Baz']], [[2,3],['Foo', 'Bar']], [[4,7,8],['Bar', 'Baz', 'Baz']], [[6],['Foo']] ]
  */
-export const getGroupedTraceValues = (classValues, filteredClassValues, ungroupedValues) => {
+export const getGroupedTraceValues = (
+    classValues,
+    filteredClassValues,
+    ungroupedValues
+) => {
     // iterate over our base data, for every array
     const groupedValues = ungroupedValues
         // iterate over our filtered base data
-        .map(ungroupedValue => filteredClassValues
-            // iterate over single values in the classValues array
-            .map(item => classValues
-                // if the current classValue value of the item mathces the value of the filteredClassValues
-                // it means it belongs to the same group and push it to the groupedValues array, the map between
-                // ungroupedValue and classValues arrays is the index since both arrays have the same length
-                .reduce((acc, cur, index) => (cur === item ? [...acc, ungroupedValue[index]] : acc), [])));
+        .map((ungroupedValue) =>
+            filteredClassValues
+                // iterate over single values in the classValues array
+                .map((item) =>
+                    classValues
+                        // if the current classValue value of the item mathces the value of the filteredClassValues
+                        // it means it belongs to the same group and push it to the groupedValues array, the map between
+                        // ungroupedValue and classValues arrays is the index since both arrays have the same length
+                        .reduce(
+                            (acc, cur, index) =>
+                                cur === item
+                                    ? [...acc, ungroupedValue[index]]
+                                    : acc,
+                            []
+                        )
+                )
+        );
     return groupedValues;
 };
 
-const preProcessValues = (formula, values) => (
-    values.map(v => {
+const preProcessValues = (formula, values) =>
+    values.map((v) => {
         const value = v;
         try {
-            return parseExpression(formula, {value});
+            return parseExpression(formula, { value });
         } catch {
             // if error (e.g. null values), return the value itself
             return v;
         }
-    }));
+    });
 
 function getData({
     type,
@@ -221,133 +306,224 @@ function getData({
     yAxisLabel,
     autoColorOptions,
     customColorEnabled,
-    classficationType
+    classficationType,
 }) {
-    const x = data.map(d => d[xDataKey]);
-    let y = data.map(d => d[yDataKey]);
-    const classifications = classificationAttr ? data.map(d => d[classificationAttr]) : [];
-    const { classificationColors, colorCategories } = getClassification(classficationType, classifications, autoColorOptions, customColorEnabled);
+    const x = data.map((d) => d[xDataKey]);
+    let y = data.map((d) => d[yDataKey]);
+    const classifications = classificationAttr
+        ? data.map((d) => d[classificationAttr])
+        : [];
+    const { classificationColors, colorCategories } = getClassification(
+        classficationType,
+        classifications,
+        autoColorOptions,
+        customColorEnabled
+    );
 
-    const { defaultClassLabel = ''} = autoColorOptions;
+    const { defaultClassLabel = "" } = autoColorOptions;
 
     switch (type) {
-
-    case 'pie':
-        let pieChartTrace = {
-            name: yAxisLabel || yDataKey,
-            hovertemplate: `%{label}<br>${yDataKey}<br>%{value}<br>%{percent}<extra></extra>`,
-            type,
-            textposition: 'inside', // this avoids text to overflow the chart div when rendered outside
-            values: y,
-            pull: 0.005
-        };
-        /* pie chart is classified colored */
-        if (classficationType !== 'default' && classificationColors.length) {
-            const legendLabels = classifications.map((item, index) => {
-                const groupByValue = x[index];
-                const customLabel =  classficationType === 'value' ? getLegendLabel(item, colorCategories, defaultClassLabel, type) :
-                    getRangeClassLabel(item, colorCategories, defaultClassLabel, groupByValue, classificationAttr);
-                if (!customLabel) {
-                    return groupByValue;
-                }
-                return customLabel.replace('${groupByValue}', groupByValue);
-            });
-            pieChartTrace = {
-                ...pieChartTrace,
-                labels: legendLabels,
-                marker: {colors: classificationColors}
+        case "pie":
+            let pieChartTrace = {
+                name: yAxisLabel || yDataKey,
+                hovertemplate: `%{label}<br>${yDataKey}<br>%{value}<br>%{percent}<extra></extra>`,
+                type,
+                textposition: "inside", // this avoids text to overflow the chart div when rendered outside
+                values: y,
+                pull: 0.005,
             };
-            return pieChartTrace;
-        }
-        /** Pie chart is evenly colored */
-        return {
-            ...(yDataKey && { legendgroup: yDataKey }),
-            ...pieChartTrace,
-            labels: x,
-            ...(customColorEnabled ? { marker: {colors: x.reduce((acc) => ([...acc, autoColorOptions?.defaultCustomColor || '#0888A1']), [])} } : {})
-        };
-
-    case 'bar':
-        if (formula) {
-            y = preProcessValues(formula, y);
-        }
-        // common bar chart properties
-        let barChartTrace = { type };
-
-        /** Bar chart is classified colored*/
-        if (classficationType !== 'default' && classificationColors.length) {
-            const legendLabels = classficationType === 'value' ? classifications.map(item => getLegendLabel(item, colorCategories, defaultClassLabel, type)) :
-                classifications.map(item => getRangeClassLabel(item, colorCategories, defaultClassLabel, yAxisLabel || yDataKey, classificationAttr));
-            const filteredLegendLabels = union(legendLabels);
-            const customLabels = filteredLegendLabels.reduce((acc, cur) => {
-                return [
-                    ...acc,
-                    ...[cur ? cur.replace('${legendValue}', yAxisLabel || yDataKey || '') : yAxisLabel || yDataKey]
-                ];
-            }, []);
-            const [groupedColors, groupedXValues, groupedYValues] = getGroupedTraceValues(legendLabels, filteredLegendLabels, [classificationColors, x, y]);
-            const barChartTraces = customLabels.map((item, index) => {
-                const trace = {
-                    ...barChartTrace,
-                    x: groupedXValues[index],
-                    y: groupedYValues[index],
-                    name: item,
-                    marker: { color: groupedColors[index] },
-                    hovertemplate: `${yAxisOpts?.tickPrefix ?? ""}%{y:${yAxisOpts?.format ?? 'g'}}${yAxisOpts?.tickSuffix ?? ""}<extra>${item}</extra>`
+            /* pie chart is classified colored */
+            if (
+                classficationType !== "default" &&
+                classificationColors.length
+            ) {
+                const legendLabels = classifications.map((item, index) => {
+                    const groupByValue = x[index];
+                    const customLabel =
+                        classficationType === "value"
+                            ? getLegendLabel(
+                                  item,
+                                  colorCategories,
+                                  defaultClassLabel,
+                                  type
+                              )
+                            : getRangeClassLabel(
+                                  item,
+                                  colorCategories,
+                                  defaultClassLabel,
+                                  groupByValue,
+                                  classificationAttr
+                              );
+                    if (!customLabel) {
+                        return groupByValue;
+                    }
+                    return customLabel.replace("${groupByValue}", groupByValue);
+                });
+                pieChartTrace = {
+                    ...pieChartTrace,
+                    labels: legendLabels,
+                    marker: { colors: classificationColors },
                 };
-                return trace;
-            });
-            return barChartTraces;
-        }
+                return pieChartTrace;
+            }
+            /** Pie chart is evenly colored */
+            return {
+                ...(yDataKey && { legendgroup: yDataKey }),
+                ...pieChartTrace,
+                labels: x,
+                ...(customColorEnabled
+                    ? {
+                          marker: {
+                              colors: x.reduce(
+                                  (acc) => [
+                                      ...acc,
+                                      autoColorOptions?.defaultCustomColor ||
+                                          "#0888A1",
+                                  ],
+                                  []
+                              ),
+                          },
+                      }
+                    : {}),
+            };
 
-        /** Bar chart is evenly colored */
-        barChartTrace = {
-            ...barChartTrace,
-            x: x,
-            y: y,
-            name: yAxisLabel || yDataKey,
-            hovertemplate: `${yAxisOpts?.tickPrefix ?? ""}%{y:${yAxisOpts?.format ?? 'g'}}${yAxisOpts?.tickSuffix ?? ""}<extra></extra>`,
-            ...(classificationColors && classificationColors.length && customColorEnabled ? {marker: {color: classificationColors}} : {})
-        };
-        return barChartTrace;
+        case "bar":
+            if (formula) {
+                y = preProcessValues(formula, y);
+            }
+            // common bar chart properties
+            let barChartTrace = { type };
 
-    default:
-        if (formula) {
-            y = preProcessValues(formula, y);
-        }
-        return {
-            hovertemplate: `${yAxisOpts?.tickPrefix ?? ""}%{y:${yAxisOpts?.format ?? 'd'}}${yAxisOpts?.tickSuffix ?? ""}<extra></extra>`, // uses the format if passed, otherwise shows the full number.
-            x,
-            y,
-            name: yAxisLabel || yDataKey
-        };
+            /** Bar chart is classified colored*/
+            if (
+                classficationType !== "default" &&
+                classificationColors.length
+            ) {
+                const legendLabels =
+                    classficationType === "value"
+                        ? classifications.map((item) =>
+                              getLegendLabel(
+                                  item,
+                                  colorCategories,
+                                  defaultClassLabel,
+                                  type
+                              )
+                          )
+                        : classifications.map((item) =>
+                              getRangeClassLabel(
+                                  item,
+                                  colorCategories,
+                                  defaultClassLabel,
+                                  yAxisLabel || yDataKey,
+                                  classificationAttr
+                              )
+                          );
+                const filteredLegendLabels = union(legendLabels);
+                const customLabels = filteredLegendLabels.reduce((acc, cur) => {
+                    return [
+                        ...acc,
+                        ...[
+                            cur
+                                ? cur.replace(
+                                      "${legendValue}",
+                                      yAxisLabel || yDataKey || ""
+                                  )
+                                : yAxisLabel || yDataKey,
+                        ],
+                    ];
+                }, []);
+                const [groupedColors, groupedXValues, groupedYValues] =
+                    getGroupedTraceValues(legendLabels, filteredLegendLabels, [
+                        classificationColors,
+                        x,
+                        y,
+                    ]);
+                const barChartTraces = customLabels.map((item, index) => {
+                    const trace = {
+                        ...barChartTrace,
+                        x: groupedXValues[index],
+                        y: groupedYValues[index],
+                        name: item,
+                        marker: { color: groupedColors[index] },
+                        hovertemplate: `${yAxisOpts?.tickPrefix ?? ""}%{y:${
+                            yAxisOpts?.format ?? "g"
+                        }}${yAxisOpts?.tickSuffix ?? ""}<extra>${item}</extra>`,
+                    };
+                    return trace;
+                });
+                return barChartTraces;
+            }
+
+            /** Bar chart is evenly colored */
+            barChartTrace = {
+                ...barChartTrace,
+                x: x,
+                y: y,
+                name: yAxisLabel || yDataKey,
+                hovertemplate: `${yAxisOpts?.tickPrefix ?? ""}%{y:${
+                    yAxisOpts?.format ?? "g"
+                }}${yAxisOpts?.tickSuffix ?? ""}<extra></extra>`,
+                ...(classificationColors &&
+                classificationColors.length &&
+                customColorEnabled
+                    ? { marker: { color: classificationColors } }
+                    : {}),
+            };
+            return barChartTrace;
+
+        default:
+            if (formula) {
+                y = preProcessValues(formula, y);
+            }
+            return {
+                hovertemplate: `${yAxisOpts?.tickPrefix ?? ""}%{y:${
+                    yAxisOpts?.format ?? "d"
+                }}${yAxisOpts?.tickSuffix ?? ""}<extra></extra>`, // uses the format if passed, otherwise shows the full number.
+                x,
+                y,
+                name: yAxisLabel || yDataKey,
+            };
     }
 }
-function getMargins({ type, isModeBarVisible}) {
+function getMargins({ type, isModeBarVisible }) {
     switch (type) {
-    case 'pie':
-        return {
-            t: isModeBarVisible ? 20 : 5,
-            b: 5,
-            l: 2,
-            r: 2,
-            pad: 4
-        };
-    default:
-        return {
-            l: 5, // if yAxis is false, reduce left margin
-            r: 5,
-            b: 30, // at least the space to show the tooltip
-            // save space on top if the bar is not visible
-            t: isModeBarVisible ? 20 : 5,
-            pad: 4
-        };
+        case "pie":
+            return {
+                t: isModeBarVisible ? 20 : 5,
+                b: 5,
+                l: 2,
+                r: 2,
+                pad: 4,
+            };
+        default:
+            return {
+                l: 5, // if yAxis is false, reduce left margin
+                r: 5,
+                b: 30, // at least the space to show the tooltip
+                // save space on top if the bar is not visible
+                t: isModeBarVisible ? 20 : 5,
+                pad: 4,
+            };
     }
 }
 
-function getLayoutOptions({ series = [], cartesian, type, yAxis, xAxisAngle, xAxisOpts = {}, yAxisOpts = {}, data = [], autoColorOptions = COLOR_DEFAULTS, customColorEnabled, barChartType = 'stack' } ) {
+function getLayoutOptions({
+    series = [],
+    cartesian,
+    type,
+    yAxis,
+    xAxisAngle,
+    xAxisOpts = {},
+    yAxisOpts = {},
+    data = [],
+    autoColorOptions = COLOR_DEFAULTS,
+    customColorEnabled,
+    barChartType = "stack",
+}) {
     const chartsLayoutOptions = {
-        colorway: customColorEnabled ? [autoColorOptions?.defaultCustomColor] || ['#0888A1'] : defaultColorGenerator(series.length, autoColorOptions),
+        colorway: customColorEnabled
+            ? [autoColorOptions?.defaultCustomColor] || ["#0888A1"]
+            : defaultColorGenerator(series.length, autoColorOptions),
         yaxis: {
             type: yAxisOpts?.type,
             automargin: true,
@@ -356,7 +532,7 @@ function getLayoutOptions({ series = [], cartesian, type, yAxis, xAxisAngle, xAx
             ticksuffix: yAxisOpts?.tickSuffix,
             showticklabels: yAxis === true,
             // showticklabels,showline for yAxis false
-            showgrid: cartesian
+            showgrid: cartesian,
         },
         xaxis: {
             showgrid: cartesian,
@@ -367,22 +543,27 @@ function getLayoutOptions({ series = [], cartesian, type, yAxis, xAxisAngle, xAx
             // dtick: xAxisAngle ? 0.25 : undefined,
             nticks: xAxisOpts.nTicks, // max number of ticks, to avoid performance issues
             automargin: true,
-            tickangle: xAxisAngle ?? 'auto'
-        }
+            tickangle: xAxisAngle ?? "auto",
+        },
     };
     switch (type) {
-    case 'pie':
-        return {
-            ...(!customColorEnabled && {colorway: defaultColorGenerator(data.length, autoColorOptions)})
-        };
-    case 'bar':
-        return {
-            barmode: barChartType,
-            ...chartsLayoutOptions
-        };
-    // line / bar
-    default:
-        return chartsLayoutOptions;
+        case "pie":
+            return {
+                ...(!customColorEnabled && {
+                    colorway: defaultColorGenerator(
+                        data.length,
+                        autoColorOptions
+                    ),
+                }),
+            };
+        case "bar":
+            return {
+                barmode: barChartType,
+                ...chartsLayoutOptions,
+            };
+        // line / bar
+        default:
+            return chartsLayoutOptions;
     }
 }
 /**
@@ -390,49 +571,74 @@ function getLayoutOptions({ series = [], cartesian, type, yAxis, xAxisAngle, xAx
  * and the Library format.
  */
 export const toPlotly = (props) => {
+    console.log("!!!!");
+    console.log(props);
+    console.log("!!!!");
     const {
-
         xAxis,
         series = [],
         yAxisLabel,
-        type = 'line',
+        type = "line",
         height,
         width,
         legend,
         classifications,
-        autoColorOptions = COLOR_DEFAULTS
+        autoColorOptions = COLOR_DEFAULTS,
     } = props;
     const xDataKey = xAxis?.dataKey;
     const isModeBarVisible = width > 350;
     const classificationAttr = classifications?.dataKey;
     const { classificationAttributeType } = props.options || {};
-    const customColorEnabled = autoColorOptions.name === 'global.colors.custom';
-    const classficationType = getChartClassificationType(classificationAttr, classificationAttributeType, autoColorOptions, customColorEnabled);
+    console.log({ classificationAttributeType });
+    const customColorEnabled = autoColorOptions.name === "global.colors.custom";
+    const classficationType = getChartClassificationType(
+        classificationAttr,
+        classificationAttributeType,
+        autoColorOptions,
+        customColorEnabled
+    );
     return {
         layout: {
             showlegend: legend,
             // https://plotly.com/javascript/setting-graph-size/
             // automargin: true ok for big widgets.
             // small widgets should be adapted accordingly
-            ...getLayoutOptions({ ...props, customColorEnabled, classificationAttr }),
-            margin: getMargins({ ...props, isModeBarVisible}),
+            ...getLayoutOptions({
+                ...props,
+                customColorEnabled,
+                classificationAttr,
+            }),
+            margin: getMargins({ ...props, isModeBarVisible }),
             autosize: false,
             height,
             width,
-            ...(type === 'pie' && isModeBarVisible && {legend: {x: 1.05, y: 0.5}}), // Position legend to right and centered vertically
-            hovermode: 'x unified',
-            uirevision: true
+            ...(type === "pie" &&
+                isModeBarVisible && { legend: { x: 1.05, y: 0.5 } }), // Position legend to right and centered vertically
+            hovermode: "x unified",
+            uirevision: true,
         },
         data: series.map(({ dataKey: yDataKey }) => {
-            let allData = getData({ ...props, xDataKey, yDataKey, classificationAttr, type, yAxisLabel, autoColorOptions, customColorEnabled, classficationType });
-            const chartData = allData ? allData?.x?.map((axis, index) => {
-                return { xAxis: axis, yAxis: allData.y[index]};
-            }) : {};
-            const sortedDataByDataAsc = orderBy(chartData, ['xAxis'], ['asc']);
-            allData.x = sortedDataByDataAsc?.map(item => {
+            let allData = getData({
+                ...props,
+                xDataKey,
+                yDataKey,
+                classificationAttr,
+                type,
+                yAxisLabel,
+                autoColorOptions,
+                customColorEnabled,
+                classficationType,
+            });
+            const chartData = allData
+                ? allData?.x?.map((axis, index) => {
+                      return { xAxis: axis, yAxis: allData.y[index] };
+                  })
+                : {};
+            const sortedDataByDataAsc = orderBy(chartData, ["xAxis"], ["asc"]);
+            allData.x = sortedDataByDataAsc?.map((item) => {
                 return item.xAxis;
             });
-            allData.y = sortedDataByDataAsc?.map(item => {
+            allData.y = sortedDataByDataAsc?.map((item) => {
                 return item.yAxis;
             });
             return allData;
@@ -445,10 +651,10 @@ export const toPlotly = (props) => {
                 "select2d",
                 "hoverCompareCartesian",
                 "hoverClosestCartesian",
-                "hoverClosestPie"
+                "hoverClosestPie",
             ],
-            displaylogo: false
-        }
+            displaylogo: false,
+        },
     };
 };
 
@@ -478,11 +684,10 @@ export const toPlotly = (props) => {
  * @prop {object} [autoColorOptions] options to generate the colors of the chart.
  * @prop {object[]} series descriptor for every series. Contains the y axis (or value) `dataKey`
  */
-export default function WidgetChart({
-    onInitialized,
-    ...props
-}) {
+export default function WidgetChart({ onInitialized, ...props }) {
+    console.log(props);
     const { data, layout, config } = toPlotly(props);
+    console.log({ data, layout, config });
     return (
         <Suspense fallback={<LoadingView />}>
             <Plot
