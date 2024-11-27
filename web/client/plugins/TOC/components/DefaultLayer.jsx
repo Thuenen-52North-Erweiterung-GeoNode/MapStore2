@@ -16,6 +16,7 @@ import DragNode from './DragNode';
 import { VisualizationModes } from '../../../utils/MapTypeUtils';
 import InlineLoader from './InlineLoader';
 import WMSLegend from './WMSLegend';
+import ArcGISLegend from './ArcGISLegend';
 import OpacitySlider from './OpacitySlider';
 import VectorLegend from './VectorLegend';
 import VisibilityCheck from './VisibilityCheck';
@@ -108,6 +109,18 @@ const DefaultLayerNode = ({
                             scales={config?.scales}
                             language={config?.language}
                             {...config?.layerOptions?.legendOptions}
+                            onChange={onChange}
+                        />
+                    </li>
+                </>
+            );
+        }
+        if (layerType === 'arcgis') {
+            return (
+                <>
+                    <li>
+                        <ArcGISLegend
+                            node={node}
                         />
                     </li>
                 </>

@@ -108,6 +108,23 @@ describe('Test correctness of the WMS APIs', () => {
                 expect(result.service).toBeTruthy();
                 expect(result.records[0].getMapFormats.length).toBe(20);
                 expect(result.numberOfRecordsMatched).toBe(5);
+                expect(result.records[0].SRS.length).toBe(3);
+                expect(result.layerOptions).toBeTruthy();
+                expect(result.layerOptions.version).toBe('1.3.0');
+                done();
+            } catch (ex) {
+                done(ex);
+            }
+        });
+    });
+    it('GetRecords', (done) => {
+        API.getRecords('base/web/client/test-resources/wms/GetCapabilities-1.3.0-minimal.xml', 0, 2, '').then((result) => {
+            try {
+                expect(result).toBeTruthy();
+                expect(result.service).toBeTruthy();
+                expect(result.records[0].getMapFormats.length).toBe(1);
+                expect(result.records[0].SRS.length).toBe(1);
+                expect(result.numberOfRecordsMatched).toBe(1);
                 expect(result.layerOptions).toBeTruthy();
                 expect(result.layerOptions.version).toBe('1.3.0');
                 done();
@@ -333,5 +350,72 @@ describe('Test correctness of the WMS APIs (mock axios)', () => {
         const layers = 'workspace:layer';
         const query = { token: 'value' };
         API.describeLayer(url, layers, { query });
+    });
+});
+
+describe('Test get json wms graphic legend (mock axios)', () => {
+    beforeEach(done => {
+        mockAxios = new MockAdapter(axios);
+        setTimeout(done);
+    });
+
+    afterEach(done => {
+        mockAxios.restore();
+        setTimeout(done);
+    });
+
+    it('get json wms graphic legend', (done) => {
+        let url = "http://localhost:8080/geoserver/wms?service=WMS&request=GetLegendGraphic&format=application/json&layers=workspace:layer&style=pophade&version=1.3.0&SLD_VERSION=1.1.0";
+        mockAxios.onGet().reply(() => {
+            return [ 200, {
+                "Legend": [{
+                    "layerName": "layer",
+                    "title": "Layer",
+                    "rules": [
+                        {
+                            "name": ">= 159.05 and < 5062.5",
+                            "filter": "[field >= '159.05' AND field < '5062.5']",
+                            "symbolizers": [{"Polygon": {
+                                "uom": "in/72",
+                                "stroke": "#ffffff",
+                                "stroke-width": "1.0",
+                                "stroke-opacity": "0.35",
+                                "stroke-linecap": "butt",
+                                "stroke-linejoin": "miter",
+                                "fill": "#8DD3C7",
+                                "fill-opacity": "0.75"
+                            }}]
+                        },
+                        {
+                            "name": ">= 5062.5 and < 20300.35",
+                            "filter": "[field >= '5062.5' AND field < '20300.35']",
+                            "symbolizers": [{"Polygon": {
+                                "uom": "in/72",
+                                "stroke": "#ffffff",
+                                "stroke-width": "1.0",
+                                "stroke-opacity": "0.35",
+                                "stroke-linecap": "butt",
+                                "stroke-linejoin": "miter",
+                                "fill": "#ABD9C5",
+                                "fill-opacity": "0.75"
+                            }}]
+                        }]
+                }]
+            }];
+        });
+
+        API.getJsonWMSLegend(url).then(result => {
+            try {
+                expect(result.length).toEqual(1);
+                expect(result[0]).toBeTruthy();
+                expect(result[0].layerName).toBeTruthy();
+                expect(result[0].layerName).toEqual('layer');
+                expect(result[0].rules).toBeTruthy();
+                expect(result[0].rules.length).toEqual(2);
+                done();
+            } catch (ex) {
+                done(ex);
+            }
+        });
     });
 });

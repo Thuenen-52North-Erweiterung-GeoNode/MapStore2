@@ -38,6 +38,7 @@ import {
     checkIdentifyIsMounted,
     onInitPlugin
 } from '../actions/mapInfo';
+import { enableHideEmptyPopupOption } from '../actions/mapPopups';
 import DefaultViewerComp from '../components/data/identify/DefaultViewer';
 import { defaultViewerDefaultProps, defaultViewerHandlers } from '../components/data/identify/enhancers/defaultViewer';
 import { identifyLifecycle } from '../components/data/identify/enhancers/identify';
@@ -196,6 +197,7 @@ const identifyDefaultProps = defaultProps({
  * @prop cfg.dock {bool} true shows dock panel, false shows modal
  * @prop cfg.draggable {boolean} draggable info window, when modal
  * @prop cfg.showHighlightFeatureButton {boolean} show the highlight feature button if the interrogation returned valid features (openlayers only)
+ * @prop cfg.hidePopupIfNoResults {boolean} hide/show the identify popup in case of no results
  * @prop cfg.highlightEnabledFromTheStart {boolean} the highlight feature button will be activated by default if true
  * @prop cfg.viewerOptions.container {expression} the container of the viewer, expression from the context
  * @prop cfg.viewerOptions.header {expression} the header of the viewer, expression from the context{expression}
@@ -207,6 +209,7 @@ const identifyDefaultProps = defaultProps({
  * @prop cfg.showMoreInfo {boolean} if true shows the more info icon which allow user to show/hide Geocode viewer as popup (true by default)
  * @prop cfg.showEdit {boolean} if true, and when the FeatureEditor plugin is present, shows and edit button to edit the current feature(s) clicked in the grid.
  * @prop cfg.enableInfoForSelectedLayers {boolean} if true, if some layer is selected in the TOC, the feature info is performed only on the selected ones. if false, the info is queried for all the layers, independently from selection. (default is true).
+ * @prop cfg.disableCoordinatesRow {boolean} if true the coordinates row is disabled
  *
  * @example
  * {
@@ -265,7 +268,8 @@ const IdentifyPlugin = compose(
     identifyIndex,
     defaultViewerHandlers,
     connect(() => ({}), {
-        setShowInMapPopup
+        setShowInMapPopup,
+        enableHideEmptyPopupOption
     }),
     identifyLifecycle
 )(IdentifyContainer);

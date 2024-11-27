@@ -29,7 +29,8 @@ import {
     mergeFiltersToOGC,
     convertFiltersToOGC,
     convertFiltersToCQL,
-    isFilterEmpty
+    isFilterEmpty,
+    updateLayerLegendFilter, resetLayerLegendFilter
 } from '../FilterUtils';
 
 
@@ -2226,6 +2227,19 @@ describe('FilterUtils', () => {
             xmlnsToAdd: ['xmlns:ogc="http://www.opengis.net/ogc"', 'xmlns:gml="http://www.opengis.net/gml"']
         }, undefined, {...filterObj, ogcVersion});
         expect(filter).toEqual(expectedFilter);
+        const args = [{
+            "ogcVersion": "1.1.0"
+        }, "P1 = 'V1' AND P2 = 'V2' OR P1 = 'V3' AND P2 = 'V4'", undefined, {
+            "featureTypeName": "cgd:GEO_FEATURE",
+            "filterType": "OGC",
+            "ogcVersion": "1.1.0",
+            "pagination": {
+                "startIndex": 0,
+                "maxFeatures": 20
+            }
+        }];
+        expect(mergeFiltersToOGC(...args)).toEqual(`<ogc:Filter><ogc:And><ogc:Or><ogc:And><ogc:PropertyIsEqualTo><ogc:PropertyName>P1</ogc:PropertyName><ogc:Literal>V1</ogc:Literal></ogc:PropertyIsEqualTo><ogc:PropertyIsEqualTo><ogc:PropertyName>P2</ogc:PropertyName><ogc:Literal>V2</ogc:Literal></ogc:PropertyIsEqualTo></ogc:And><ogc:And><ogc:PropertyIsEqualTo><ogc:PropertyName>P1</ogc:PropertyName><ogc:Literal>V3</ogc:Literal></ogc:PropertyIsEqualTo><ogc:PropertyIsEqualTo><ogc:PropertyName>P2</ogc:PropertyName><ogc:Literal>V4</ogc:Literal></ogc:PropertyIsEqualTo></ogc:And></ogc:Or></ogc:And></ogc:Filter>`);
+
     });
     // sub function to convert filters from other formats
     describe('sub function to convert filters from other formats', () => {
@@ -2316,5 +2330,165 @@ describe('FilterUtils', () => {
             filters: []
         })).toBe(false);
 
+    });
+    it('test updateLayerLegendFilter for wms, simple filter', () => {
+        const layerFilterObj = {};
+        const lgegendFilter = "[FIELD1 = 'Value' AND FIELD2 > '1256']";
+        const updatedFilterObj = updateLayerLegendFilter(layerFilterObj, lgegendFilter);
+        expect(updatedFilterObj).toBeTruthy();
+        expect(updatedFilterObj.filters.length).toEqual(1);
+        expect(updatedFilterObj.filters.filter(i => i.id === 'interactiveLegend')?.length).toEqual(1);
+        expect(updatedFilterObj.filters.find(i => i.id === 'interactiveLegend').filters.length).toEqual(1);
+    });
+    it('test updateLayerLegendFilter for wms, apply multi legend filter', () => {
+        const layerFilterObj = {
+            "groupFields": [
+                {
+                    "id": 1,
+                    "logic": "OR",
+                    "index": 0
+                }
+            ],
+            "filterFields": [],
+            "attributePanelExpanded": true,
+            "spatialPanelExpanded": true,
+            "crossLayerExpanded": true,
+            "crossLayerFilter": {
+                "attribute": "the_geom"
+            },
+            "spatialField": {
+                "method": null,
+                "operation": "INTERSECTS",
+                "geometry": null,
+                "attribute": "the_geom"
+            },
+            "filters": [
+                {
+                    "id": "interactiveLegend",
+                    "format": "logic",
+                    "version": "1.0.0",
+                    "logic": "OR",
+                    "filters": [
+                        {
+                            "format": "cql",
+                            "version": "1.0.0",
+                            "body": "FIELD_01 >= '2500' AND FIELD_01 < '7000'",
+                            "id": "[FIELD_01 >= '2500' AND FIELD_01 < '7000']"
+                        }
+                    ]
+                }
+            ]
+        };
+        const lgegendFilter = "[FIELD_01 >= '13000' AND FIELD_01 < '14500']";
+        const updatedFilterObj = updateLayerLegendFilter(layerFilterObj, lgegendFilter);
+        expect(updatedFilterObj).toBeTruthy();
+        expect(updatedFilterObj.filters.length).toEqual(1);
+        expect(updatedFilterObj.filters.filter(i => i.id === 'interactiveLegend')?.length).toEqual(1);
+        expect(updatedFilterObj.filters.find(i => i.id === 'interactiveLegend').filters.length).toEqual(2);
+    });
+    it('test reset legend filter using updateLayerLegendFilter', () => {
+        const layerFilterObj = {
+            "groupFields": [
+                {
+                    "id": 1,
+                    "logic": "OR",
+                    "index": 0
+                }
+            ],
+            "filterFields": [],
+            "attributePanelExpanded": true,
+            "spatialPanelExpanded": true,
+            "crossLayerExpanded": true,
+            "crossLayerFilter": {
+                "attribute": "the_geom"
+            },
+            "spatialField": {
+                "method": null,
+                "operation": "INTERSECTS",
+                "geometry": null,
+                "attribute": "the_geom"
+            },
+            "filters": [
+                {
+                    "id": "interactiveLegend",
+                    "format": "logic",
+                    "version": "1.0.0",
+                    "logic": "OR",
+                    "filters": [
+                        {
+                            "format": "cql",
+                            "version": "1.0.0",
+                            "body": "FIELD_01 >= '2500' AND FIELD_01 < '7000'",
+                            "id": "[FIELD_01 >= '2500' AND FIELD_01 < '7000']"
+                        },
+                        {
+                            "format": "cql",
+                            "version": "1.0.0",
+                            "body": "FIELD_01 >= '13000' AND FIELD_01 < '14500'",
+                            "id": "[FIELD_01 >= '13000' AND FIELD_01 < '14500']"
+                        }
+                    ]
+                }
+            ]
+        };
+        const updatedFilterObj = updateLayerLegendFilter(layerFilterObj);
+        expect(updatedFilterObj).toBeTruthy();
+        expect(updatedFilterObj.filters.length).toEqual(0);
+        expect(updatedFilterObj.filters.find(i => i.id === 'interactiveLegend')).toBeFalsy();
+    });
+    it('test resetLayerLegendFilter in case change wms style', () => {
+        const layerFilterObj = {
+            "groupFields": [
+                {
+                    "id": 1,
+                    "logic": "OR",
+                    "index": 0
+                }
+            ],
+            "filterFields": [],
+            "attributePanelExpanded": true,
+            "spatialPanelExpanded": true,
+            "crossLayerExpanded": true,
+            "crossLayerFilter": {
+                "attribute": "the_geom"
+            },
+            "spatialField": {
+                "method": null,
+                "operation": "INTERSECTS",
+                "geometry": null,
+                "attribute": "the_geom"
+            },
+            "filters": [
+                {
+                    "id": "interactiveLegend",
+                    "format": "logic",
+                    "version": "1.0.0",
+                    "logic": "OR",
+                    "filters": [
+                        {
+                            "format": "cql",
+                            "version": "1.0.0",
+                            "body": "FIELD_01 >= '2500' AND FIELD_01 < '7000'",
+                            "id": "[FIELD_01 >= '2500' AND FIELD_01 < '7000']"
+                        },
+                        {
+                            "format": "cql",
+                            "version": "1.0.0",
+                            "body": "FIELD_01 >= '13000' AND FIELD_01 < '14500'",
+                            "id": "[FIELD_01 >= '13000' AND FIELD_01 < '14500']"
+                        }
+                    ]
+                }
+            ]
+        };
+        const layer = {
+            enableInteractiveLegend: true,
+            layerFilter: layerFilterObj,
+            style: "style_01"
+        };
+        const updatedFilterObj = resetLayerLegendFilter(layer, 'style', 'style_02');
+        expect(updatedFilterObj).toBeTruthy();
+        expect(updatedFilterObj.filters.length).toEqual(0);
+        expect(updatedFilterObj.filters.find(i => i.id === 'interactiveLegend')).toBeFalsy();
     });
 });

@@ -13,25 +13,25 @@ import { createPlugin } from '../../utils/PluginsUtils';
 import { CONTROL_NAME } from './constants';
 
 import StreetViewContainer from './containers/StreetViewContainer';
-import {toggleStreetView, configure, reset} from './actions/streetView';
+import {toggleStreetView, configure, reset, resetViewerData} from './actions/streetView';
 import Message from '../../components/I18N/Message';
 import { enabledSelector } from './selectors/streetView';
-
 
 import streetView from './reducers/streetview';
 import * as epics from './epics/streetView';
 import './style/street-view.less';
 import { setControlProperty } from '../../actions/controls';
+import MapLocationSupport from './containers/MapLocationSupport';
 
-const StreetViewPluginComponent = ({onMount, onUnmount, apiKey, useDataLayer, dataLayerConfig, panoramaOptions, provider = 'google', providerSettings, panelSize}) => {
+const StreetViewPluginComponent = ({onMount, onUnmount, resetStViewData, apiKey, useDataLayer, clampToGround, dataLayerConfig, panoramaOptions, provider = 'google', providerSettings, panelSize}) => {
     useEffect(() => {
-        onMount({apiKey, useDataLayer, dataLayerConfig, panoramaOptions, provider, providerSettings});
+        onMount({apiKey, useDataLayer, dataLayerConfig, panoramaOptions, provider, providerSettings, clampToGround});
         return () => {
             onUnmount();
         };
     }, [apiKey, useDataLayer, dataLayerConfig, JSON.stringify(panoramaOptions ?? {})]);
 
-    return <StreetViewContainer provider={provider} providerSettings={providerSettings} panelSize={panelSize} />;
+    return <StreetViewContainer resetStViewData={resetStViewData} apiKey={apiKey} provider={provider} providerSettings={providerSettings} panelSize={panelSize} />;
 };
 
 const StreetViewPluginContainer = connect(() => ({}), {
@@ -42,6 +42,8 @@ const StreetViewPluginContainer = connect(() => ({}), {
                 dispatch(setControlProperty(CONTROL_NAME, "enabled", false)); // turn the plugin off when unmounting, if it was on
             }
         };
+    }, resetStViewData: () => {
+        return (dispatch) => dispatch(resetViewerData());
     }
 })(StreetViewPluginComponent);
 
@@ -68,13 +70,15 @@ const StreetViewPluginContainer = connect(() => ({}), {
  * @property {object} [cfg.dataLayerConfig] configuration for the data layer. By default `{provider: 'custom', type: "tileprovider", url: "https://mts1.googleapis.com/vt?hl=en-US&lyrs=svv|cb_client:apiv3&style=40,18&x={x}&y={y}&z={z}"}`
  * @property {object} [cfg.panoramaOptions] options to configure the panorama. {@link https://developers.google.com/maps/documentation/javascript/reference/street-view#panoramaOptions|Reference for google maps API}
  * @property {object} [cfg.panelSize] option to configure default street view modal panel size `width` and `height`. Example: `{"width": 500, "height": 500}`.
+ * @property {string} [cfg.markerColor] color for the location marker
+ * @property {boolean} [cfg.clampToGround] ensure to place markers on the globe surface
  * @class
  */
 export default createPlugin(
     'StreetView',
     {
         options: {
-            disablePluginIf: "{state('mapType') === 'leaflet' || state('mapType') === 'cesium'}"
+            disablePluginIf: "{state('mapType') === 'leaflet'}"
         },
         epics,
         reducers: {
@@ -107,6 +111,11 @@ export default createPlugin(
                         active: enabledSelector(state) || false
                     };
                 }
+            },
+            Map: {
+                Tool: MapLocationSupport,
+                name: 'StreetViewMapLocationSupport',
+                alwaysRender: true
             }
         }
     }

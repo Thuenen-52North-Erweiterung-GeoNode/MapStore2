@@ -41,7 +41,7 @@ import {
     itemIdSelector, overrideParamsSelector, filterNameListSelector,
     currentEditFeatureQuerySelector, mapTriggerSelector, enableInfoForSelectedLayersSelector
 } from '../selectors/mapInfo';
-import { centerToMarkerSelector, getSelectedLayers, layersSelector, queryableLayersSelector, queryableSelectedLayersSelector, selectedNodesSelector } from '../selectors/layers';
+import { centerToMarkerSelector, getSelectedLayers, layersSelector, queryableLayersSelector, queryableSelectedLayersSelector, rawGroupsSelector, selectedNodesSelector } from '../selectors/layers';
 import { modeSelector, getAttributeFilters, isFeatureGridOpen } from '../selectors/featuregrid';
 import { spatialFieldSelector } from '../selectors/queryform';
 import { mapSelector, projectionDefsSelector, projectionSelector, isMouseMoveIdentifyActiveSelector } from '../selectors/map';
@@ -51,6 +51,7 @@ import { floatingIdentifyDelaySelector } from '../selectors/localConfig';
 import { createControlEnabledSelector, measureSelector } from '../selectors/controls';
 import { localizedLayerStylesEnvSelector } from '../selectors/localizedLayerStyles';
 import { mouseOutSelector } from '../selectors/mousePosition';
+import { hideEmptyPopupSelector } from '../selectors/mapPopups';
 import {getBbox, getCurrentResolution, parseLayoutValue} from '../utils/MapUtils';
 import {buildIdentifyRequest, defaultQueryableFilter, filterRequestParams} from '../utils/MapInfoUtils';
 import { IDENTIFY_POPUP } from '../components/map/popups';
@@ -63,6 +64,7 @@ const stopFeatureInfo = state => stopGetFeatureInfoSelector(state) || isFeatureG
 import {getFeatureInfo} from '../api/identify';
 import { VISUALIZATION_MODE_CHANGED } from '../actions/maptype';
 import {updatePointWithGeometricFilter} from "../utils/IdentifyUtils";
+import { getDerivedLayersVisibility } from '../utils/LayersUtils';
 
 /**
  * Epics for Identify and map info
@@ -75,14 +77,19 @@ import {updatePointWithGeometricFilter} from "../utils/IdentifyUtils";
 export const getFeatureInfoOnFeatureInfoClick = (action$, { getState = () => { } }) =>
     action$.ofType(FEATURE_INFO_CLICK)
         .switchMap(({ point, filterNameList = [], overrideParams = {}, ignoreVisibilityLimits }) => {
+            const groups = rawGroupsSelector(getState());
+
             // ignoreVisibilityLimits is for ignore limits of layers visibility
             // Reverse - To query layer in same order as in TOC
-            let queryableLayers = ignoreVisibilityLimits ? reverse([...layersSelector(getState())].filter(l=>defaultQueryableFilter(l))) :  reverse(queryableLayersSelector(getState()));
-            const queryableSelectedLayers = ignoreVisibilityLimits ? [...getSelectedLayers(getState())].filter(l => defaultQueryableFilter(l)) : queryableSelectedLayersSelector(getState());
+            let queryableLayers = ignoreVisibilityLimits ? reverse(getDerivedLayersVisibility([...layersSelector(getState())], groups).filter(l=>defaultQueryableFilter(l))) :  reverse(getDerivedLayersVisibility(queryableLayersSelector(getState()), groups));
+            const queryableSelectedLayers = ignoreVisibilityLimits ? getDerivedLayersVisibility([...getSelectedLayers(getState())].filter(l => defaultQueryableFilter(l)), groups) : getDerivedLayersVisibility(queryableSelectedLayersSelector(getState()), groups);
             const enableInfoForSelectedLayers = enableInfoForSelectedLayersSelector(getState());
             if (enableInfoForSelectedLayers && queryableSelectedLayers.length) {
                 queryableLayers = queryableSelectedLayers;
             }
+            // remove invisible layers, visible layer with invisible group already converted to invisible layer using getDerivedLayersVisibility
+            queryableLayers = queryableLayers.filter(l=>l.visibility);
+
 
             const selectedLayers = selectedNodesSelector(getState());
 
@@ -250,8 +257,15 @@ export const zoomToVisibleAreaEpic = (action$, store) =>
         .filter(() => centerToMarkerSelector(store.getState()))
         .switchMap((action) =>
             action$.ofType(LOAD_FEATURE_INFO, ERROR_FEATURE_INFO)
-                .mergeMap(() => {
+                .mergeMap((loadFeatInfoAction) => {
                     const state = store.getState();
+                    const hideIdentifyPopupIfNoResults = hideEmptyPopupSelector(state);
+                    const hoverIdentifyActive = isMouseMoveIdentifyActiveSelector(state);
+                    const noResultFeatures = loadFeatInfoAction.type === LOAD_FEATURE_INFO && loadFeatInfoAction?.data?.includes("no features were found");
+                    // remove marker in case activated identify hover mode and no fetched results plus existing hideIdentifyPopupIfNoResults = true
+                    if (noResultFeatures && hideIdentifyPopupIfNoResults && hoverIdentifyActive) {
+                        return Rx.Observable.from([updateCenterToMarker('disabled'), hideMapinfoMarker()]);
+                    }
                     const map = mapSelector(state);
                     const mapProjection = projectionSelector(state);
                     const projectionDefs = projectionDefsSelector(state);

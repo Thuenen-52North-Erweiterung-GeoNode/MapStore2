@@ -3,7 +3,7 @@
     <groupId>it.geosolutions.mapstore</groupId>
     <artifactId>mapstore-bin-war</artifactId>
     <packaging>war</packaging>
-    <version>1.7-SNAPSHOT</version>
+    <version>1.8-SNAPSHOT</version>
     <name>MapStore 2 Release Module WAR</name>
     <description>Creates the war for the binary package, adding customization (e.g. h2 database)</description>
     <url>http://www.geo-solutions.it</url>
@@ -29,7 +29,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
-                <version>2.1.1</version>
+                <version>3.4.0</version>
                 <configuration>
                     <overlays>
                         <overlay>

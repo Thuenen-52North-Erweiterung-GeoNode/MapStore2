@@ -18,11 +18,14 @@ import InfoPopover from '../../../widgets/widget/InfoPopover';
 import Legend from '../../../../plugins/TOC/components/Legend';
 import VisibilityLimitsForm from './VisibilityLimitsForm';
 import { ServerTypes } from '../../../../utils/LayersUtils';
+import {updateLayerLegendFilter} from '../../../../utils/FilterUtils';
 import Select from 'react-select';
 import { getSupportedFormat } from '../../../../api/WMS';
 import WMSCacheOptions from './WMSCacheOptions';
 import ThreeDTilesSettings from './ThreeDTilesSettings';
 import ModelTransformation from './ModelTransformation';
+import StyleBasedWMSJsonLegend from '../../../../plugins/TOC/components/StyleBasedWMSJsonLegend';
+import { getMiscSetting } from '../../../../utils/ConfigUtils';
 export default class extends React.Component {
     static propTypes = {
         opacityText: PropTypes.node,
@@ -36,12 +39,14 @@ export default class extends React.Component {
         isCesiumActive: PropTypes.bool,
         projection: PropTypes.string,
         resolutions: PropTypes.array,
-        zoom: PropTypes.number
+        zoom: PropTypes.number,
+        hideInteractiveLegendOption: PropTypes.bool
     };
 
     static defaultProps = {
         onChange: () => {},
-        opacityText: <Message msgId="opacity"/>
+        opacityText: <Message msgId="opacity"/>,
+        hideInteractiveLegendOption: false
     };
 
     constructor(props) {
@@ -119,6 +124,8 @@ export default class extends React.Component {
     };
     render() {
         const formatValue = this.props.element && this.props.element.format || "image/png";
+        const experimentalInteractiveLegend = getMiscSetting('experimentalInteractiveLegend', false);
+        const enableInteractiveLegend = !!(experimentalInteractiveLegend && this.props.element?.enableInteractiveLegend);
         return (
             <Grid
                 fluid
@@ -203,6 +210,7 @@ export default class extends React.Component {
                                 projection={this.props.projection}
                                 resolutions={this.props.resolutions}
                                 zoom={this.props.zoom}
+                                defaultLimitsType={this.props.element.visibilityLimitType}
                             />
                         </FormGroup>
                     </Col>
@@ -261,7 +269,26 @@ export default class extends React.Component {
                         <Col xs={12} className={"legend-label"}>
                             <label key="legend-options-title" className="control-label"><Message msgId="layerProperties.legendOptions.title" /></label>
                         </Col>
-                        <Col xs={12} sm={6} className="first-selectize">
+                        { experimentalInteractiveLegend && this.props.element?.serverType !== ServerTypes.NO_VENDOR && !this.props?.hideInteractiveLegendOption &&
+                            <Col xs={12} className="first-selectize">
+                                <Checkbox
+                                    data-qa="display-interactive-legend-option"
+                                    value="enableInteractiveLegend"
+                                    key="enableInteractiveLegend"
+                                    onChange={(e) => {
+                                        if (!e.target.checked) {
+                                            const newLayerFilter = updateLayerLegendFilter(this.props.element.layerFilter);
+                                            this.props.onChange("layerFilter", newLayerFilter );
+                                        }
+                                        this.props.onChange("enableInteractiveLegend", e.target.checked);
+                                    }}
+                                    checked={enableInteractiveLegend} >
+                                    <Message msgId="layerProperties.enableInteractiveLegendInfo.label"/>
+                                    &nbsp;<InfoPopover text={<Message msgId="layerProperties.enableInteractiveLegendInfo.info" />} />
+                                </Checkbox>
+                            </Col>
+                        }
+                        {!enableInteractiveLegend && <><Col xs={12} sm={6} className="first-selectize">
                             <FormGroup validationState={this.getValidationState("legendWidth")}>
                                 <ControlLabel><Message msgId="layerProperties.legendOptions.legendWidth" /></ControlLabel>
                                 <IntlNumberFormControl
@@ -290,20 +317,32 @@ export default class extends React.Component {
                                     onBlur={this.onBlur}
                                 />
                             </FormGroup>
-                        </Col>
+                        </Col></>}
                         <Col xs={12} className="legend-preview">
                             <ControlLabel><Message msgId="layerProperties.legendOptions.legendPreview" /></ControlLabel>
                             <div style={this.setOverFlow() && this.state.containerStyle || {}} ref={this.containerRef} >
-                                <Legend
-                                    style={this.setOverFlow() && {} || undefined}
-                                    layer={this.props.element}
-                                    legendHeight={
-                                        this.useLegendOptions() && this.state.legendOptions.legendHeight || undefined}
-                                    legendWidth={
-                                        this.useLegendOptions() && this.state.legendOptions.legendWidth || undefined}
-                                    language={
-                                        this.props.isLocalizedLayerStylesEnabled ? this.props.currentLocaleLanguage : undefined}
-                                />
+                                { enableInteractiveLegend ?
+                                    <StyleBasedWMSJsonLegend
+                                        owner="legendPreview"
+                                        style={this.setOverFlow() && {} || undefined}
+                                        layer={this.props.element}
+                                        legendHeight={
+                                            this.useLegendOptions() && this.state.legendOptions.legendHeight || undefined}
+                                        legendWidth={
+                                            this.useLegendOptions() && this.state.legendOptions.legendWidth || undefined}
+                                        language={
+                                            this.props.isLocalizedLayerStylesEnabled ? this.props.currentLocaleLanguage : undefined}
+                                    /> :
+                                    <Legend
+                                        style={this.setOverFlow() && {} || undefined}
+                                        layer={this.props.element}
+                                        legendHeight={
+                                            this.useLegendOptions() && this.state.legendOptions.legendHeight || undefined}
+                                        legendWidth={
+                                            this.useLegendOptions() && this.state.legendOptions.legendWidth || undefined}
+                                        language={
+                                            this.props.isLocalizedLayerStylesEnabled ? this.props.currentLocaleLanguage : undefined}
+                                    />}
                             </div>
                         </Col>
                     </div>

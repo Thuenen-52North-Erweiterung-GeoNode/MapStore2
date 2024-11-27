@@ -88,6 +88,12 @@
             .background-color-var(@theme-vars[selected-bg]);
             .outline-color-var(@theme-vars[focus-color]);
         }
+        .wms-json-legend-rule.filter-enabled:hover {
+            .background-color-var(@theme-vars[selected-hover-bg]);
+        }
+        .wms-json-legend-rule.filter-enabled.active {
+            .background-color-var(@theme-vars[selected-bg]);
+        }
     }
 }
 
@@ -249,7 +255,7 @@
     }
     .ms-node-layer {
         .shadow-soft();
-        ul {
+        ul:not(.ms-legend) {
             padding: 4px 8px;
         }
     }
@@ -388,15 +394,38 @@
     }
 }
 
-// legend for vector wfs styles
-.ms-vector-legend {
+// style for wms json legend
+.wms-legend {
+    .wms-json-legend-rule {
+        display: flex;
+        margin-bottom: @padding-left-square-md;
+        .ms-legend-icon {
+            margin-right: 8px;
+        }
+    }
+}
+
+// legend style
+.ms-legend-title {
+    font-weight: bold;
+    margin: 8px 0;
+}
+.ms-legend {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    .ms-vector-legend-rule {
+    gap: 4px;
+    ul& {
+        border-left: none;
+        padding-left: 0;
+    }
+    .ms-legend-rule {
         display: flex;
     }
-    .ms-rule-legend-icon {
-        margin-right: 4px;
+    .ms-legend-icon {
+        margin-right: 8px;
+        align-items: normal;
     }
+}
+.wms-json-legend-rule.filter-enabled:hover {
+    cursor: pointer;
 }

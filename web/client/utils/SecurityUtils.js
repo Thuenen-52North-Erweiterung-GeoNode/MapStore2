@@ -158,6 +158,10 @@ export function getAuthenticationHeaders(url, securityToken) {
             "Authorization": `Bearer ${token}`
         };
     }
+    case 'header': {
+        const rule = getAuthenticationRule(url);
+        return rule.headers;
+    }
     default:
         // we cannot handle the required authentication method
         return null;

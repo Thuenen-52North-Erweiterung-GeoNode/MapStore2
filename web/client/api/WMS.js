@@ -106,7 +106,7 @@ export const searchAndPaginate = (json = {}, startPosition, maxRecords, text) =>
     const root = json.Capability;
     const service = json.Service;
     const onlineResource = getOnlineResource(root);
-    const SRSList = root.Layer && (root.Layer.SRS || root.Layer.CRS)?.map((crs) => crs.toUpperCase()) || [];
+    const SRSList = root.Layer && castArray(root.Layer.SRS || root.Layer.CRS)?.map((crs) => crs.toUpperCase()) || [];
     const credits = root.Layer && root.Layer.Attribution && extractCredits(root.Layer.Attribution);
     const getMapFormats = castArray(root?.Request?.GetMap?.Format || []);
     const getFeatureInfoFormats = castArray(root?.Request?.GetFeatureInfo?.Format || []);
@@ -319,6 +319,22 @@ export const getSupportedFormat = (url, includeGFIFormats = false) => {
             return imageFormats;
         })
         .catch(() => includeGFIFormats ? { imageFormats: [], infoFormats: [] } : []);
+};
+
+let layerLegendJsonData = {};
+export const getJsonWMSLegend = (url) => {
+    const request = layerLegendJsonData[url]
+        ? () => Promise.resolve(layerLegendJsonData[url])
+        : () => axios.get(url).then((response) => {
+            if (typeof response?.data === 'string' && response.data.includes("Exception")) {
+                throw new Error("Faild to get json legend");
+            }
+            layerLegendJsonData[url] = response?.data?.Legend;
+            return response?.data?.Legend || [];
+        });
+    return request().then((data) => data).catch(err => {
+        throw err;
+    });
 };
 
 const Api = {

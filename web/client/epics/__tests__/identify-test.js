@@ -146,6 +146,42 @@ describe('identify Epics', () => {
         }, state);
     });
 
+    it('getFeatureInfoOnFeatureInfoClick, no queryable if layer is visible but it"s group is invisible', (done)=>{
+        // remove previous hook
+        registerHook('RESOLUTION_HOOK', undefined);
+        const state = {
+            map: TEST_MAP_STATE,
+            mapInfo: {
+                clickPoint: { latlng: { lat: 36.95, lng: -79.84 } }
+            },
+            layers: {
+                flat: [{
+                    id: "TEST",
+                    name: "TEST",
+                    "title": "TITLE",
+                    type: "wfs",
+                    visibility: true,
+                    url: 'base/web/client/test-resources/featureInfo-response.json',
+                    group: "TEST_GROUP"
+                }],
+                groups: [
+                    {
+                        id: "TEST_GROUP",
+                        title: "TEST_GROUP",
+                        visibility: false
+                    }
+                ]
+            }
+        };
+        const sentActions = [featureInfoClick({ latlng: { lat: 36.95, lng: -79.84 } })];
+        testEpic(getFeatureInfoOnFeatureInfoClick, 2, sentActions, ([a0, a1]) => {
+            expect(a0.type).toBe(PURGE_MAPINFO_RESULTS);
+            expect(a1.type).toBe(NO_QUERYABLE_LAYERS);
+            done();
+        }, state);
+
+    });
+
     it('getFeatureInfoOnFeatureInfoClick WMS', (done) => {
         // remove previous hook
         registerHook('RESOLUTION_HOOK', undefined);
@@ -964,6 +1000,54 @@ describe('identify Epics', () => {
         };
 
         testEpic(zoomToVisibleAreaEpic,  3, sentActions, expectedAction, state);
+    });
+    it('test zoomToVisibleAreaEpic remove shown marker of identify if no results + existing hideEmptyPopupOption flag = true', (done) => {
+        // remove previous hook
+        registerHook('RESOLUTION_HOOK', undefined);
+
+        const state = {
+            mapInfo: {
+                centerToMarker: true
+            },
+            mapPopups: {
+                hideEmptyPopupOption: true
+            },
+            map: {present: {...TEST_MAP_STATE.present, eventListeners: {mousemove: ["identifyFloatingTool"]}}},
+            maplayout: {
+                boundingMapRect: {
+                    left: 500,
+                    bottom: 250
+                }
+            }
+        };
+
+        const sentActions = [
+            featureInfoClick({ latlng: { lat: 36.95, lng: -79.84 } }),
+            loadFeatureInfo(1, "no features were found")
+        ];
+
+        const expectedAction = actions => {
+            try {
+                expect(actions.length).toBe(2);
+                actions.map((action) => {
+                    switch (action.type) {
+                    case HIDE_MAPINFO_MARKER:
+                        done();
+                        break;
+                    case UPDATE_CENTER_TO_MARKER:
+                        expect(action.status).toBe('disabled');
+                        break;
+                    default:
+                        expect(true).toBe(false);
+                    }
+                });
+            } catch (ex) {
+                done(ex);
+            }
+            done();
+        };
+
+        testEpic(zoomToVisibleAreaEpic,  2, sentActions, expectedAction, state);
     });
 
     it('onMapClick triggers featureinfo when selected', done => {
