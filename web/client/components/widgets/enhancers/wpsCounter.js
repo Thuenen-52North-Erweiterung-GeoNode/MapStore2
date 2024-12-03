@@ -30,8 +30,7 @@ import { getWpsUrl } from '../../../utils/LayersUtils';
  */
 const dataStreamFactory = ($props) =>
     $props
-.filter(({layer = {}, options, dependencies, mapSync}) => {
-
+        .filter(({layer = {}, options, dependencies, mapSync}) => {
             // Check if mapSync is enabled (true) and dependencies.viewport is null or falsy
             // If this condition is true, return false to filter out the event.
             // This prevents an extra API call from being triggered when the viewport is not available.
