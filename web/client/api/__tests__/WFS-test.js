@@ -122,12 +122,6 @@ describe('Test WFS ogc API functions', () => {
             done();
         });
     });
-    it('toDescribeURL with URL array', () => {
-        const _url = [
-            'http://gs-stable.geosolutionsgroup.com:443/geoserver1',
-            'http://gs-stable.geosolutionsgroup.com:443/geoserver2',
-            'http://gs-stable.geosolutionsgroup.com:443/geoserver3'
-        ];
 
     it('getSupportedFormat without text/html format', (done) => {
         mockAxios.onGet().reply(200, `
